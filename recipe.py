@@ -1,73 +1,69 @@
 import streamlit as st
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain import LLMChain, PromptTemplate
-from hyperon import MeTTa
-
-metta = MeTTa()
+from recipe_list import metta  # Import MeTTa instance from recipe_list.py
 
 class MettaClient:
-    def __init__(self, kb_path: str):
-        self.kb_path = kb_path
-        self.recipes = [
-            {"name": "Pasta with Tomato and Cheese", "ingredients": ["Tomato", "Pasta", "Cheese"], "time": 20},
-            {"name": "Tomato Soup", "ingredients": ["Tomato", "Water", "Salt"], "time": 15},
-            {"name": "Cheesy Pasta", "ingredients": ["Pasta", "Cheese", "Butter"], "time": 18},
-        ]
-
-    def query_recipes(self, available_ingredients: list[str]) -> list[dict]:
+    def query_recipes(self, available_ingredients):
+        available_ingredients = ",".join(available_ingredients)
+        print(f"Available ingredients: {available_ingredients}")
+        query = '''
+            !(match &self 
+                (Gomen 
+                    $ingredient
+                    $steps
+                    $t
+                ) 
+            ($ingredient $steps $t)
+        )
+        '''
+        
+        results = metta.run(query)
         matches = []
-        for recipe in self.recipes:
-            if set(recipe["ingredients"]).issubset(set(available_ingredients)):
-                matches.append(recipe)
-        return matches
+        print(results)
+        return results
 
-metta = MettaClient(kb_path="recipes.mtta")
 
-GOOGLE_API_KEY = "AIzaSyB1zMop2qQm-KYYFRU0Faqxs6pfnHPvxN0"
-llm = ChatGoogleGenerativeAI(model='models/gemini-1.5-flash')
+metta_client = MettaClient()
+
+GOOGLE_API_KEY = "AIzaSyC4ZXxaPT_F_O5f3GVl5wK-dZqmAJx6VPM"
+llm = ChatGoogleGenerativeAI(model='gemini-1.5-flash')
 
 prompt_template = PromptTemplate(
-    input_variables=["recipe_name", "ingredients", "time"],
+    input_variables=["recipe"],
     template=(
-        "I have a recipe called '{recipe_name}'. It uses the following ingredients: {ingredients}. "
-        "The cooking time is {time} minutes. Provide a short description or suggestion to the user."
+        "based on the {recipe} given for the food preparation, "
+        "please provide a detailed recipe with the following format:\n"
+        "1. Ingredients\n"  
+        "2. Cooking time\n"
+        "3. Cooking steps\n"
+        "4. Serving suggestions\n" 
     )
 )
 llm_chain = LLMChain(llm=llm, prompt=prompt_template)
 
+
 st.set_page_config(page_title="Recipe Recommendation Bot", layout="centered")
 st.title("Recipe Recommendation Bot")
-st.write("Tell me what ingredients you have, and I'll suggest recipes you can cook!")
+st.write("Enter the ingredients you have, and I'll suggest recipes you can cook!")
 
 with st.form(key="ingredient_form"):
-    ingredients_input = st.text_input("Enter ingredients you have (comma-separated)", placeholder="e.g., Tomato, Pasta, Cheese")
+    ingredients_input = st.text_input("Enter ingredients (comma-separated)", placeholder="e.g., teff flour, water, salt")
     submitted = st.form_submit_button("Find Recipes")
 
 if submitted:
-    available_ingredients = [item.strip().capitalize() for item in ingredients_input.split(",") if item.strip()]
-
+    available_ingredients = [item.strip() for item in ingredients_input.split(",") if item.strip()]
+    print(f"Available ingredients: {available_ingredients}")
     if not available_ingredients:
         st.warning("Please enter at least one ingredient.")
     else:
-        results = metta.query_recipes(available_ingredients)
-
-        if not results:
-            st.info("No matching recipes found with the given ingredients.")
-        else:
-            st.success(f"Found {len(results)} recipe(s) you can make:")
-            for recipe in results:
-                recipe_name = recipe["name"]
-                recipe_ings = ", ".join(recipe["ingredients"])
-                cooking_time = recipe["time"]
-
-                with st.expander(f"{recipe_name} ({cooking_time} mins)"):
-                    st.write(f"**Ingredients:** {recipe_ings}")
+        results = metta_client.query_recipes(available_ingredients)
+        print(results)
+        with st.expander("Recipe Details"):
                     llm_output = llm_chain.run(
-                        recipe_name=recipe_name,
-                        ingredients=recipe_ings,
-                        time=cooking_time
+                        results
                     )
-                    st.write(llm_output)
+                    st.write(f"**Suggestion:** {llm_output}")
 
 st.markdown("---")
 st.markdown("Built with Streamlit, LangChain (using Gemini), and MeTTa for knowledge representation.")

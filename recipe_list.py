@@ -7,9 +7,9 @@ recipe_one = E(
     S("Injera"),
     E(
         S("Ingrients"),
-        S("0.48 kg teff flour"),
-        S("0.72 l water"),
-        S("0.002 kg salt (added after fermentation)")
+        S("teff flour"),
+        S("water"),
+        S("salt")
     ),
     E(
         S("process"),
@@ -219,3 +219,16 @@ recipe_eight = E(
     E(S("time"), S("30"))
 )
 metta.space().add_atom(recipe_eight)
+
+print(recipe_eight)
+res=metta.run('''
+            !(match &self 
+                (Gomen 
+                    $ingredient
+                    $steps
+                    $t
+                ) 
+            ($ingredient $steps $t)
+        )
+        ''')
+print(res)
