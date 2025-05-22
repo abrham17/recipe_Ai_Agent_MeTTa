@@ -7,7 +7,7 @@ recipe_one = E(
     S("Injera"),
     E(
         S("Ingrients"),
-        S("teff flour"),
+        S("teff"),
         S("water"),
         S("salt")
     ),
@@ -220,15 +220,5 @@ recipe_eight = E(
 )
 metta.space().add_atom(recipe_eight)
 
-print(recipe_eight)
-res=metta.run('''
-            !(match &self 
-                (Gomen 
-                    $ingredient
-                    $steps
-                    $t
-                ) 
-            ($ingredient $steps $t)
-        )
-        ''')
-print(res)
+print(recipe_one)
+
